@@ -1,7 +1,9 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
+import { createClient } from "@/lib/supabase/server";
 import { getGroup } from "@/lib/data/groups";
 import {
   ExpenseParseError,
@@ -12,9 +14,59 @@ import {
 import type { GroupMember } from "@/lib/data/groups";
 import {
   previewExpenseSchema,
+  saveExpenseSchema,
   type ExpensePreview,
   type PreviewExpenseState,
+  type SaveExpenseState,
 } from "./definitions";
+
+// Saves the reviewed expense and its equal splits atomically (create_expense
+// RPC). RLS rejects payers or participants outside the group.
+export async function saveExpense(
+  _state: SaveExpenseState,
+  formData: FormData,
+): Promise<SaveExpenseState> {
+  await requireUser();
+  const parsed = saveExpenseSchema.safeParse({
+    groupId: formData.get("groupId"),
+    payerId: formData.get("payerId"),
+    amount: formData.get("amount"),
+    currency: formData.get("currency"),
+    description: formData.get("description") ?? undefined,
+    rawText: formData.get("rawText") ?? undefined,
+    participantIds: formData.getAll("participantIds"),
+  });
+
+  if (!parsed.success) {
+    return { errors: z.flattenError(parsed.error).fieldErrors };
+  }
+
+  const { groupId, payerId, amount, currency, description, rawText, participantIds } =
+    parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("create_expense", {
+    p_group_id: groupId,
+    p_payer_id: payerId,
+    p_amount: amount,
+    p_currency: currency,
+    p_description: description ?? null,
+    p_raw_text: rawText ?? null,
+    p_participant_ids: participantIds,
+  });
+
+  if (error) {
+    console.error("saveExpense failed:", error);
+    return {
+      message:
+        error.code === "42501"
+          ? "You can only add expenses for members of this group."
+          : "Could not save the expense. Please try again.",
+    };
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  return { success: true, message: "Expense saved." };
+}
 
 // Parses a message into an editable preview. Nothing is saved here.
 export async function previewExpense(
