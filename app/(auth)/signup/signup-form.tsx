@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { signup } from "@/lib/auth/actions";
-import { Field, FormMessage, SubmitButton } from "../form-ui";
+import { Field, FormMessage, SubmitButton } from "@/components/form-ui";
 
 export function SignupForm() {
   const [state, action, pending] = useActionState(signup, undefined);

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseEnv } from "./env";
 
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/groups"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 // Refreshes the auth token on every request and does optimistic redirects.
