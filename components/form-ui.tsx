@@ -1,4 +1,4 @@
-// Presentational pieces shared by the login and signup forms.
+// Presentational form pieces shared by the auth and group forms.
 
 type FieldProps = {
   label: string;

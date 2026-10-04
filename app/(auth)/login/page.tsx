@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FormMessage } from "../form-ui";
+import { FormMessage } from "@/components/form-ui";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
