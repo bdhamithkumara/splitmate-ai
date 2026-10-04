@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
 import { getGroup } from "@/lib/data/groups";
+import { AddExpense } from "./add-expense";
 import { AddMemberForm } from "./add-member-form";
 
 export async function generateMetadata({
@@ -30,6 +31,16 @@ export default async function GroupPage({ params }: PageProps<"/groups/[id]">) {
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">{group.name}</h1>
       </div>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
+          Add expense
+        </h2>
+        <AddExpense
+          groupId={group.id}
+          members={group.members.map(({ id, name }) => ({ id, name }))}
+        />
+      </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
