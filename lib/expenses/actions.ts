@@ -5,12 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getGroup } from "@/lib/data/groups";
-import {
-  ExpenseParseError,
-  matchMember,
-  parseExpense,
-  type ParsedExpense,
-} from "@/lib/ai";
+import { ExpenseParseError, parseExpense, type ParsedExpense } from "@/lib/ai";
 import type { GroupMember } from "@/lib/data/groups";
 import {
   previewExpenseSchema,
@@ -19,6 +14,7 @@ import {
   type PreviewExpenseState,
   type SaveExpenseState,
 } from "./definitions";
+import { resolveExpense } from "./resolve";
 
 // Saves the reviewed expense and its equal splits atomically (create_expense
 // RPC). RLS rejects payers or participants outside the group.
@@ -124,36 +120,10 @@ function resolvePreview(
   members: GroupMember[],
   me: GroupMember,
 ): ExpensePreview {
-  const notes: string[] = [];
-
-  // Payer: the named member, otherwise whoever is adding the expense.
-  let payer = me;
-  if (expense.payer) {
-    const match = matchMember(expense.payer, members);
-    if (match) payer = match;
-    else notes.push(`“${expense.payer}” isn't in this group, so the payer is set to you.`);
-  } else {
-    notes.push("No payer mentioned, so it's set to you.");
-  }
-
-  // Participants: the named members, otherwise the whole group.
-  let participantIds: string[];
-  if (expense.participants) {
-    const ids = new Set<string>();
-    for (const name of expense.participants) {
-      const match = matchMember(name, members);
-      if (match) ids.add(match.id);
-      else notes.push(`“${name}” isn't in this group and was skipped.`);
-    }
-    // "with Kasun" and no payer named: the sender (now the payer) shared it too.
-    if (!expense.payer) ids.add(payer.id);
-    participantIds = [...ids];
-  } else {
-    participantIds = members.map((m) => m.id);
-    notes.push("No participants mentioned, so it's split with the whole group.");
-  }
-
-  if (participantIds.length === 0) participantIds = [payer.id];
+  const resolved = resolveExpense(expense, source, members, {
+    id: me.id,
+    label: "you",
+  });
 
   return {
     id: crypto.randomUUID(),
@@ -161,9 +131,9 @@ function resolvePreview(
     amount: expense.amount ?? 0,
     currency: expense.currency ?? "LKR",
     description: expense.description,
-    payerId: payer.id,
-    participantIds,
+    payerId: resolved.payerId ?? me.id,
+    participantIds: resolved.participantIds,
     source,
-    notes,
+    notes: resolved.notes,
   };
 }

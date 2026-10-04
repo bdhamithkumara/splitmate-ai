@@ -43,9 +43,17 @@ export default async function GroupPage({ params }: PageProps<"/groups/[id]">) {
       </div>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
-          Add expense
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
+            Add expense
+          </h2>
+          <Link
+            href={`/groups/${group.id}/import`}
+            className="text-sm font-medium underline"
+          >
+            Import WhatsApp chat
+          </Link>
+        </div>
         <AddExpense groupId={group.id} members={members} />
       </section>
 
