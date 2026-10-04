@@ -10,7 +10,7 @@ export type GroupExpense = {
   currency: string;
   description: string | null;
   raw_text: string | null;
-  created_at: string;
+  spent_at: string;
   expense_splits: { member_id: string; amount: number }[];
 };
 
@@ -24,10 +24,10 @@ export async function getGroupExpenses(groupId: string): Promise<GroupExpense[]>
   const { data, error } = await supabase
     .from("expenses")
     .select(
-      "id, payer_id, amount, currency, description, raw_text, created_at, expense_splits(member_id, amount)",
+      "id, payer_id, amount, currency, description, raw_text, spent_at, expense_splits(member_id, amount)",
     )
     .eq("group_id", groupId)
-    .order("created_at", { ascending: false });
+    .order("spent_at", { ascending: false });
 
   if (error) {
     console.error("getGroupExpenses failed:", error);
@@ -43,4 +43,27 @@ export async function getGroupExpenses(groupId: string): Promise<GroupExpense[]>
       amount: Number(s.amount),
     })),
   })) as GroupExpense[];
+}
+
+// Time of the newest imported chat message, so the next import can continue
+// from there.
+export async function getLastImportAt(groupId: string): Promise<string | null> {
+  await requireUser();
+  if (!z.uuid().safeParse(groupId).success) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("spent_at")
+    .eq("group_id", groupId)
+    .not("import_key", "is", null)
+    .order("spent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getLastImportAt failed:", error);
+    return null;
+  }
+  return data?.spent_at ?? null;
 }

@@ -46,8 +46,8 @@ export function ExpenseList({
             {expense.expense_splits.map((s) => nameOf(s.member_id)).join(", ")}
           </p>
           <p className="flex flex-wrap gap-x-2 text-xs text-zinc-400">
-            <time dateTime={expense.created_at}>
-              {dateFormat.format(new Date(expense.created_at))}
+            <time dateTime={expense.spent_at}>
+              {dateFormat.format(new Date(expense.spent_at))}
             </time>
             {expense.raw_text && (
               <span className="truncate">“{expense.raw_text}”</span>
