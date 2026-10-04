@@ -2,9 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/dal";
+import { getGroupExpenses } from "@/lib/data/expenses";
 import { getGroup } from "@/lib/data/groups";
 import { AddExpense } from "./add-expense";
 import { AddMemberForm } from "./add-member-form";
+import { Balances } from "./balances";
+import { ExpenseList } from "./expense-list";
 
 export async function generateMetadata({
   params,
@@ -16,9 +19,16 @@ export async function generateMetadata({
 
 export default async function GroupPage({ params }: PageProps<"/groups/[id]">) {
   const { id } = await params;
-  const [user, group] = await Promise.all([requireUser(), getGroup(id)]);
+  const [user, group, expenses] = await Promise.all([
+    requireUser(),
+    getGroup(id),
+    getGroupExpenses(id),
+  ]);
 
   if (!group) notFound();
+
+  const members = group.members.map(({ id, name }) => ({ id, name }));
+  const me = group.members.find((m) => m.user_id === user.id);
 
   return (
     <div className="space-y-6">
@@ -36,10 +46,21 @@ export default async function GroupPage({ params }: PageProps<"/groups/[id]">) {
         <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
           Add expense
         </h2>
-        <AddExpense
-          groupId={group.id}
-          members={group.members.map(({ id, name }) => ({ id, name }))}
-        />
+        <AddExpense groupId={group.id} members={members} />
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
+          Balances
+        </h2>
+        <Balances expenses={expenses} members={members} myMemberId={me?.id} />
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="mb-2 text-xs font-medium tracking-wide text-zinc-500 uppercase">
+          Expenses · {expenses.length}
+        </h2>
+        <ExpenseList expenses={expenses} members={members} />
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">

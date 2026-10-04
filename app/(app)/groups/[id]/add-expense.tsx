@@ -1,22 +1,34 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { previewExpense } from "@/lib/expenses/actions";
+import { previewExpense, saveExpense } from "@/lib/expenses/actions";
 import {
   MAX_MESSAGE_LENGTH,
   type ExpensePreview,
 } from "@/lib/expenses/definitions";
 import { FormMessage } from "@/components/form-ui";
+import { formatMoney } from "@/lib/format";
 
 type Member = { id: string; name: string };
+type Props = { groupId: string; members: Member[] };
 
-export function AddExpense({
+// Remounting the composer (new key) resets both forms after a save.
+export function AddExpense(props: Props) {
+  const [round, setRound] = useState(0);
+  return (
+    <ExpenseComposer
+      key={round}
+      {...props}
+      onDone={() => setRound((r) => r + 1)}
+    />
+  );
+}
+
+function ExpenseComposer({
   groupId,
   members,
-}: {
-  groupId: string;
-  members: Member[];
-}) {
+  onDone,
+}: Props & { onDone: () => void }) {
   const [state, action, pending] = useActionState(previewExpense, undefined);
 
   return (
@@ -62,8 +74,10 @@ export function AddExpense({
       {state?.preview && !pending && (
         <PreviewCard
           key={state.preview.id}
+          groupId={groupId}
           preview={state.preview}
           members={members}
+          onDone={onDone}
         />
       )}
     </div>
@@ -71,12 +85,19 @@ export function AddExpense({
 }
 
 function PreviewCard({
+  groupId,
   preview,
   members,
+  onDone,
 }: {
+  groupId: string;
   preview: ExpensePreview;
   members: Member[];
+  onDone: () => void;
 }) {
+  const [saveState, saveAction, saving] = useActionState(saveExpense, undefined);
+  // Controlled: React resets uncontrolled fields after every form action,
+  // which would drop the user's edits when a save fails validation.
   const [amount, setAmount] = useState(String(preview.amount));
   const [description, setDescription] = useState(preview.description ?? "");
   const [payerId, setPayerId] = useState(preview.payerId);
@@ -87,8 +108,6 @@ function PreviewCard({
   const total = Number(amount);
   const share =
     participantIds.size > 0 && total > 0 ? total / participantIds.size : null;
-  const money = (value: number) =>
-    `${preview.currency} ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
   function toggle(id: string) {
     setParticipantIds((current) => {
@@ -99,8 +118,28 @@ function PreviewCard({
     });
   }
 
+  if (saveState?.success) {
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-300">
+        <span role="status">{saveState.message}</span>
+        <button type="button" onClick={onDone} className="font-medium underline">
+          Add another
+        </button>
+      </div>
+    );
+  }
+
+  const errors = saveState?.errors;
+
   return (
-    <div className="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+    <form
+      action={saveAction}
+      className="space-y-4 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+    >
+      <input type="hidden" name="groupId" value={groupId} />
+      <input type="hidden" name="currency" value={preview.currency} />
+      <input type="hidden" name="rawText" value={preview.rawText} />
+
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium">Check before saving</h3>
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
@@ -108,25 +147,35 @@ function PreviewCard({
         </span>
       </div>
 
+      <FormMessage message={saveState?.message} />
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm">
           <span className="block text-xs text-zinc-500">
             Amount ({preview.currency})
           </span>
           <input
+            name="amount"
             type="number"
             min="0.01"
             step="0.01"
+            required
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
+            aria-invalid={errors?.amount ? true : undefined}
+            className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 aria-invalid:border-red-500 dark:border-zinc-700"
           />
+          {errors?.amount && (
+            <span className="block text-red-600">{errors.amount[0]}</span>
+          )}
         </label>
         <label className="space-y-1 text-sm">
           <span className="block text-xs text-zinc-500">Description</span>
           <input
+            name="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            maxLength={100}
             placeholder="e.g. dinner"
             className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
           />
@@ -134,6 +183,7 @@ function PreviewCard({
         <label className="space-y-1 text-sm sm:col-span-2">
           <span className="block text-xs text-zinc-500">Paid by</span>
           <select
+            name="payerId"
             value={payerId}
             onChange={(e) => setPayerId(e.target.value)}
             className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700 dark:bg-zinc-950"
@@ -157,6 +207,8 @@ function PreviewCard({
             >
               <input
                 type="checkbox"
+                name="participantIds"
+                value={m.id}
                 checked={participantIds.has(m.id)}
                 onChange={() => toggle(m.id)}
               />
@@ -167,8 +219,11 @@ function PreviewCard({
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           {share === null
             ? "Pick at least one person and a valid amount."
-            : `${money(share)} each · ${participantIds.size} ${participantIds.size === 1 ? "person" : "people"}`}
+            : `About ${formatMoney(share, preview.currency)} each · ${participantIds.size} ${participantIds.size === 1 ? "person" : "people"}`}
         </p>
+        {errors?.participantIds && (
+          <p className="text-sm text-red-600">{errors.participantIds[0]}</p>
+        )}
       </fieldset>
 
       {preview.notes.length > 0 && (
@@ -180,13 +235,12 @@ function PreviewCard({
       )}
 
       <button
-        type="button"
-        disabled
-        title="Saving is the next step"
-        className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+        type="submit"
+        disabled={saving || share === null}
+        className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
       >
-        Save expense (coming next)
+        {saving ? "Saving…" : "Save expense"}
       </button>
-    </div>
+    </form>
   );
 }
