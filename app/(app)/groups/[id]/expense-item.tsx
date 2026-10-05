@@ -46,18 +46,27 @@ export function ExpenseItem({
     );
   }
 
+  const isSettlement = expense.kind === "settlement";
+  const title = isSettlement
+    ? `💸 ${nameOf(expense.payer_id)} paid ${expense.expense_splits.map((s) => nameOf(s.member_id)).join(", ")}`
+    : expense.description || "Expense";
+
   return (
     <li className="space-y-1 py-3 text-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium">{expense.description || "Expense"}</span>
+        <span className={isSettlement ? "text-green-700 dark:text-green-400" : "font-medium"}>
+          {title}
+        </span>
         <span className="font-mono">
           {formatMoney(expense.amount, expense.currency)}
         </span>
       </div>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        {nameOf(expense.payer_id)} paid · split with{" "}
-        {expense.expense_splits.map((s) => nameOf(s.member_id)).join(", ")}
-      </p>
+      {!isSettlement && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          {nameOf(expense.payer_id)} paid · split with{" "}
+          {expense.expense_splits.map((s) => nameOf(s.member_id)).join(", ")}
+        </p>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex min-w-0 flex-wrap gap-x-2 text-xs text-zinc-400">
           <time dateTime={expense.spent_at}>
@@ -71,18 +80,20 @@ export function ExpenseItem({
           <DeleteConfirm
             groupId={groupId}
             expenseId={expense.id}
-            label={`${expense.description || "Expense"} · ${formatMoney(expense.amount, expense.currency)}`}
+            label={`${isSettlement ? "payment" : expense.description || "Expense"} · ${formatMoney(expense.amount, expense.currency)}`}
             onCancel={() => setMode("view")}
           />
         ) : (
           <div className="flex gap-3 text-xs">
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className="text-zinc-500 underline hover:text-foreground"
-            >
-              Edit
-            </button>
+            {!isSettlement && (
+              <button
+                type="button"
+                onClick={() => setMode("edit")}
+                className="text-zinc-500 underline hover:text-foreground"
+              >
+                Edit
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setMode("confirm-delete")}

@@ -66,12 +66,17 @@ export default async function GroupPage({ params }: PageProps<"/groups/[id]">) {
         <h2 className="mb-4 text-xs font-medium tracking-wide text-zinc-500 uppercase">
           Balances
         </h2>
-        <Balances expenses={expenses} members={members} myMemberId={me?.id} />
+        <Balances
+          groupId={group.id}
+          expenses={expenses}
+          members={members}
+          myMemberId={me?.id}
+        />
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
         <h2 className="mb-2 text-xs font-medium tracking-wide text-zinc-500 uppercase">
-          Expenses · {expenses.length}
+          History · {expenses.length}
         </h2>
         <ExpenseList groupId={group.id} expenses={expenses} members={members} />
       </section>

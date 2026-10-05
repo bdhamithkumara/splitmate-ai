@@ -10,6 +10,7 @@ import type { GroupMember } from "@/lib/data/groups";
 import {
   deleteExpenseSchema,
   previewExpenseSchema,
+  recordSettlementSchema,
   saveExpenseSchema,
   updateExpenseSchema,
   type ExpensePreview,
@@ -114,6 +115,52 @@ export async function updateExpense(
 
   revalidatePath(`/groups/${groupId}`);
   return { success: true, message: "Changes saved." };
+}
+
+// "Hasaru paid Kasun back": stored as a settlement (record_settlement RPC).
+export async function recordSettlement(
+  _state: SaveExpenseState,
+  formData: FormData,
+): Promise<SaveExpenseState> {
+  await requireUser();
+  const parsed = recordSettlementSchema.safeParse({
+    groupId: formData.get("groupId"),
+    fromId: formData.get("fromId"),
+    toId: formData.get("toId"),
+    amount: formData.get("amount"),
+    currency: formData.get("currency"),
+  });
+
+  if (!parsed.success) {
+    const { fieldErrors } = z.flattenError(parsed.error);
+    return {
+      errors: fieldErrors.amount ? { amount: fieldErrors.amount } : undefined,
+      message: fieldErrors.amount ? undefined : "Invalid payment.",
+    };
+  }
+
+  const { groupId, fromId, toId, amount, currency } = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("record_settlement", {
+    p_group_id: groupId,
+    p_from_member_id: fromId,
+    p_to_member_id: toId,
+    p_amount: amount,
+    p_currency: currency,
+  });
+
+  if (error) {
+    console.error("recordSettlement failed:", error);
+    return {
+      message:
+        error.code === RLS_DENIED
+          ? "Both people must be members of this group."
+          : "Could not record the payment. Please try again.",
+    };
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  return { success: true, message: "Payment recorded." };
 }
 
 export async function deleteExpense(

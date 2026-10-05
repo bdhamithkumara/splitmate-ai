@@ -1,14 +1,17 @@
 import type { GroupExpense } from "@/lib/data/expenses";
 import { computeBalances } from "@/lib/expenses/balances";
 import { formatMoney } from "@/lib/format";
+import { SettleForm } from "./settle-form";
 
 type Member = { id: string; name: string };
 
 export function Balances({
+  groupId,
   expenses,
   members,
   myMemberId,
 }: {
+  groupId: string;
   expenses: GroupExpense[];
   members: Member[];
   myMemberId: string | undefined;
@@ -17,10 +20,9 @@ export function Balances({
     return <p className="text-sm text-zinc-500">No expenses yet.</p>;
   }
 
-  const nameOf = (id: string) => {
-    if (id === myMemberId) return "You";
-    return members.find((m) => m.id === id)?.name ?? "Former member";
-  };
+  const realName = (id: string) =>
+    members.find((m) => m.id === id)?.name ?? "Former member";
+  const nameOf = (id: string) => (id === myMemberId ? "You" : realName(id));
 
   return (
     <div className="space-y-6">
@@ -34,15 +36,25 @@ export function Balances({
             <ul className="space-y-2">
               {settlements.map((s) => (
                 <li
-                  key={`${s.fromId}-${s.toId}`}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-900"
+                  // amount in the key: the form resets after a partial payment
+                  key={`${s.fromId}-${s.toId}-${s.amount}`}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-900"
                 >
-                  <span>
+                  <span className="min-w-0 flex-1">
                     <strong className="font-medium">{nameOf(s.fromId)}</strong>{" "}
                     {s.fromId === myMemberId ? "owe" : "owes"}{" "}
                     <strong className="font-medium">{nameOf(s.toId)}</strong>
                   </span>
                   <span className="font-mono">{formatMoney(s.amount, currency)}</span>
+                  <SettleForm
+                    groupId={groupId}
+                    fromId={s.fromId}
+                    toId={s.toId}
+                    fromName={realName(s.fromId)}
+                    toName={realName(s.toId)}
+                    amount={s.amount}
+                    currency={currency}
+                  />
                 </li>
               ))}
             </ul>
