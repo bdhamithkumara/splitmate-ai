@@ -8,8 +8,10 @@ import { getGroup } from "@/lib/data/groups";
 import { ExpenseParseError, parseExpense, type ParsedExpense } from "@/lib/ai";
 import type { GroupMember } from "@/lib/data/groups";
 import {
+  deleteExpenseSchema,
   previewExpenseSchema,
   saveExpenseSchema,
+  updateExpenseSchema,
   type ExpensePreview,
   type PreviewExpenseState,
   type SaveExpenseState,
@@ -62,6 +64,81 @@ export async function saveExpense(
 
   revalidatePath(`/groups/${groupId}`);
   return { success: true, message: "Expense saved." };
+}
+
+const NOT_FOUND = "P0002";
+const RLS_DENIED = "42501";
+
+// Edits an expense and rebuilds its equal splits atomically (update_expense
+// RPC). Any group member may edit; RLS enforces that.
+export async function updateExpense(
+  _state: SaveExpenseState,
+  formData: FormData,
+): Promise<SaveExpenseState> {
+  await requireUser();
+  const parsed = updateExpenseSchema.safeParse({
+    groupId: formData.get("groupId"),
+    expenseId: formData.get("expenseId"),
+    payerId: formData.get("payerId"),
+    amount: formData.get("amount"),
+    description: formData.get("description") ?? undefined,
+    participantIds: formData.getAll("participantIds"),
+  });
+
+  if (!parsed.success) {
+    return { errors: z.flattenError(parsed.error).fieldErrors };
+  }
+
+  const { groupId, expenseId, payerId, amount, description, participantIds } =
+    parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_expense", {
+    p_expense_id: expenseId,
+    p_payer_id: payerId,
+    p_amount: amount,
+    p_description: description ?? null,
+    p_participant_ids: participantIds,
+  });
+
+  if (error) {
+    console.error("updateExpense failed:", error);
+    return {
+      message:
+        error.code === NOT_FOUND
+          ? "This expense no longer exists."
+          : error.code === RLS_DENIED
+            ? "You can only use members of this group."
+            : "Could not save your changes. Please try again.",
+    };
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  return { success: true, message: "Changes saved." };
+}
+
+export async function deleteExpense(
+  _state: SaveExpenseState,
+  formData: FormData,
+): Promise<SaveExpenseState> {
+  await requireUser();
+  const parsed = deleteExpenseSchema.safeParse({
+    groupId: formData.get("groupId"),
+    expenseId: formData.get("expenseId"),
+  });
+  if (!parsed.success) return { message: "Invalid request." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_expense", {
+    p_expense_id: parsed.data.expenseId,
+  });
+
+  if (error && error.code !== NOT_FOUND) {
+    console.error("deleteExpense failed:", error);
+    return { message: "Could not delete the expense. Please try again." };
+  }
+
+  revalidatePath(`/groups/${parsed.data.groupId}`);
+  return { success: true };
 }
 
 // Parses a message into an editable preview. Nothing is saved here.
