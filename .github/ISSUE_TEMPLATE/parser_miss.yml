@@ -1,0 +1,33 @@
+name: Parser got a message wrong
+description: An expense message was read incorrectly (wrong amount, payer or people)
+labels: ["parser"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Real-world messages help the parser most. **Change real names to placeholders** (e.g. Kasun, Hasaru, Sidath, Dhamith) and remove anything private.
+  - type: input
+    id: message
+    attributes:
+      label: Message
+      placeholder: "e.g. kottu 1800 hasaru with sidath"
+    validations:
+      required: true
+  - type: textarea
+    id: got
+    attributes:
+      label: What SplitMate read
+      description: Amount, payer, participants, and whether it said "Quick match" or "Read by AI".
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What it should be
+    validations:
+      required: true
+  - type: input
+    id: members
+    attributes:
+      label: Group member names (placeholders)
+      placeholder: Kasun, Hasaru, Sidath, Dhamith
