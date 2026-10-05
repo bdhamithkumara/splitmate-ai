@@ -22,7 +22,7 @@ export default async function DashboardPage() {
 
         {groups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-            You&apos;re not in any groups yet. Create one above.
+            You&apos;re not in any groups yet. Create one above, or open an invite link from a friend.
           </div>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">

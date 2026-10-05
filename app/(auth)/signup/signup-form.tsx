@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { signup } from "@/lib/auth/actions";
 import { Field, FormMessage, SubmitButton } from "@/components/form-ui";
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(signup, undefined);
 
   if (state?.success) {
@@ -13,6 +13,7 @@ export function SignupForm() {
 
   return (
     <form action={action} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       <FormMessage message={state?.message} />
       <Field
         label="Name"

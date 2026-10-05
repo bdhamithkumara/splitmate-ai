@@ -1,8 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { safeNextPath } from "@/lib/auth/definitions";
 import { getSupabaseEnv } from "./env";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/groups"];
+const PROTECTED_PREFIXES = ["/dashboard", "/groups", "/invite"];
 const AUTH_ROUTES = ["/login", "/signup"];
 
 // Refreshes the auth token on every request and does optimistic redirects.
@@ -49,7 +50,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (AUTH_ROUTES.includes(pathname) && isAuthenticated) {
-    return redirectWithCookies(request, response, "/dashboard");
+    const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+    const target = new URL(next, request.url);
+    return redirectWithCookies(request, response, target.pathname, Object.fromEntries(target.searchParams));
   }
 
   return response;
