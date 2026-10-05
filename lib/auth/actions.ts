@@ -1,10 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getOrigin } from "@/lib/url";
 import {
   loginSchema,
   safeNextPath,
@@ -63,6 +63,7 @@ export async function signup(
   }
 
   const { name, email, password } = parsed.data;
+  const next = safeNextPath(formData.get("next"));
   const origin = await getOrigin();
   const supabase = await createClient();
 
@@ -71,7 +72,7 @@ export async function signup(
     password,
     options: {
       data: { display_name: name },
-      emailRedirectTo: `${origin}/auth/callback?next=/dashboard`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -88,7 +89,7 @@ export async function signup(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(next);
 }
 
 export async function logout() {
@@ -97,14 +98,4 @@ export async function logout() {
 
   revalidatePath("/", "layout");
   redirect("/login");
-}
-
-async function getOrigin() {
-  const headerList = await headers();
-  const origin = headerList.get("origin");
-  if (origin) return origin;
-
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return `${protocol}://${host}`;
 }

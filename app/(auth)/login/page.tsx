@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next, error } = await searchParams;
+  const nextPath = typeof next === "string" ? next : undefined;
 
   return (
     <div className="space-y-6">
@@ -19,10 +20,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {error === "auth_callback" && (
         <FormMessage message="That link is invalid or has expired. Please log in again." />
       )}
-      <LoginForm next={typeof next === "string" ? next : undefined} />
+      <LoginForm next={nextPath} />
       <p className="text-center text-sm text-zinc-500">
         No account?{" "}
-        <Link href="/signup" className="font-medium text-foreground underline">
+        <Link
+          href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"}
+          className="font-medium text-foreground underline">
           Sign up
         </Link>
       </p>
