@@ -1,0 +1,35 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! Please don't include real names, phone numbers or private chat content.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a group
+        2. Type "..."
+        3. Click "..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error messages
+      description: From the browser console or the `npm run dev` terminal, if any.
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: e.g. Chrome 140 on Windows 11, Node 22, Ollama 0.35
