@@ -47,6 +47,19 @@ export const deleteExpenseSchema = z.object({
   expenseId: z.uuid(),
 });
 
+export const recordSettlementSchema = z
+  .object({
+    groupId: z.uuid(),
+    fromId: z.uuid(),
+    toId: z.uuid(),
+    amount: z.coerce
+      .number({ error: "Enter an amount." })
+      .positive({ error: "Amount must be more than 0." })
+      .max(100_000_000, { error: "That amount is too large." }),
+    currency: z.string().regex(/^[A-Z]{3}$/),
+  })
+  .refine((v) => v.fromId !== v.toId, { error: "Pick two different people." });
+
 export type SaveExpenseState =
   | {
       errors?: Partial<

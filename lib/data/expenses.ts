@@ -11,6 +11,7 @@ export type GroupExpense = {
   description: string | null;
   raw_text: string | null;
   spent_at: string;
+  kind: "expense" | "settlement";
   expense_splits: { member_id: string; amount: number }[];
 };
 
@@ -24,7 +25,7 @@ export async function getGroupExpenses(groupId: string): Promise<GroupExpense[]>
   const { data, error } = await supabase
     .from("expenses")
     .select(
-      "id, payer_id, amount, currency, description, raw_text, spent_at, expense_splits(member_id, amount)",
+      "id, payer_id, amount, currency, description, raw_text, spent_at, kind, expense_splits(member_id, amount)",
     )
     .eq("group_id", groupId)
     .order("spent_at", { ascending: false });
