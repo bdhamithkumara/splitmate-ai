@@ -32,6 +32,21 @@ export const saveExpenseSchema = z.object({
     .min(1, { error: "Pick at least one person to split with." }),
 });
 
+export const updateExpenseSchema = saveExpenseSchema
+  .pick({
+    groupId: true,
+    payerId: true,
+    amount: true,
+    description: true,
+    participantIds: true,
+  })
+  .extend({ expenseId: z.uuid() });
+
+export const deleteExpenseSchema = z.object({
+  groupId: z.uuid(),
+  expenseId: z.uuid(),
+});
+
 export type SaveExpenseState =
   | {
       errors?: Partial<
